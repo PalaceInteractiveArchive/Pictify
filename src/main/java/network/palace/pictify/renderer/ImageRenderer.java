@@ -1,15 +1,14 @@
 package network.palace.pictify.renderer;
 
+import com.comphenix.protocol.injector.BukkitUnwrapper;
+import com.comphenix.protocol.utility.MinecraftReflection;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.server.v1_11_R1.WorldMap;
-import net.minecraft.server.v1_11_R1.WorldServer;
 import network.palace.core.Core;
 import network.palace.pictify.Pictify;
 import network.palace.pictify.utils.FilesystemCache;
 import network.palace.pictify.utils.ImageUtil;
 import org.bukkit.Bukkit;
-import org.bukkit.craftbukkit.v1_11_R1.CraftWorld;
 import org.bukkit.entity.Player;
 import org.bukkit.event.server.MapInitializeEvent;
 import org.bukkit.map.MapCanvas;
@@ -18,6 +17,8 @@ import org.bukkit.map.MapRenderer;
 import org.bukkit.map.MapView;
 
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -110,12 +111,14 @@ public class ImageRenderer extends MapRenderer {
 
     public void deactivate() {
         MapView m = getMapView();
+        if (m == null) return;
         for (MapRenderer mr : m.getRenderers()) m.removeRenderer(mr);
     }
 
     public void activate() {
         deactivate();
         MapView m = getMapView();
+        if (m == null) return;
         m.addRenderer(this);
     }
 
@@ -124,17 +127,44 @@ public class ImageRenderer extends MapRenderer {
         if (m != null) {
             return m;
         }
-        WorldServer ws = ((CraftWorld) Bukkit.getWorlds().get(0)).getHandle();
-        String name = "map_" + frameId;
-        WorldMap map = new WorldMap(name);
-        map.scale = 3;
-        map.a(ws.getWorldData().b(), ws.getWorldData().d(), map.scale);
-        map.map = (byte) ws.dimension;
-        map.c();
-        ws.getServer().getServer().worlds.get(0).a(name, map);
-        MapInitializeEvent event = new MapInitializeEvent(map.mapView);
-        Bukkit.getPluginManager().callEvent(event);
-        return map.mapView;
+        return createNewMap("map_" + frameId);
+    }
+
+    private MapView createNewMap(String name) {
+        try {
+            // Create instance
+            Object map = MinecraftReflection.getMinecraftClass("WorldMap").getDeclaredConstructor(String.class).newInstance(name);
+            // Set Scale
+            Field scale = map.getClass().getDeclaredField("scale");
+            scale.setByte(map, (byte) 3);
+            // Get server
+            Object worldServer = new BukkitUnwrapper().unwrapItem(Bukkit.getWorlds().get(0));
+            // Get World data
+            Object worldData = worldServer.getClass().getMethod("getWorldData").invoke(worldServer);
+            int spawnX = (int) worldData.getClass().getMethod("b").invoke(worldData);
+            int spawnY = (int) worldData.getClass().getMethod("d").invoke(worldData);
+            int dimension = (int) worldServer.getClass().getDeclaredField("dimension").get(worldServer);
+            // Calculate map center
+            map.getClass().getMethod("a", double.class, double.class, int.class).invoke(map, spawnX, spawnY, scale.get(map));
+            // Set dimension
+            Field mapDimension = map.getClass().getDeclaredField("map");
+            mapDimension.setByte(map, (byte) dimension);
+            // Mark dirty
+            map.getClass().getMethod("c").invoke(map);
+            // Create map for world
+            Object craftServer = worldServer.getClass().getMethod("getServer").invoke(worldServer);
+            Object minecraftServer = craftServer.getClass().getMethod("getServer").invoke(craftServer);
+            List worlds = (List) minecraftServer.getClass().getField("worlds").get(minecraftServer);
+            Object worldServerFromWorlds = worlds.get(0);
+            worldServerFromWorlds.getClass().getSuperclass().getMethod("a", name.getClass(), map.getClass().getSuperclass()).invoke(worldServerFromWorlds, name, map);
+            // Get mapView
+            MapView mapView = (MapView) map.getClass().getField("mapView").get(map);
+            Bukkit.getPluginManager().callEvent(new MapInitializeEvent(mapView));
+            return mapView;
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException | NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public void leave(UUID uuid) {
