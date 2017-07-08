@@ -92,7 +92,7 @@ public class ImageRenderer extends MapRenderer {
         return createNewMap("map_" + frameId);
     }
 
-    public MapView createNewMap(String name) {
+    private MapView createNewMap(String name) {
         try {
             // Create instance
             Object map = MinecraftReflection.getMinecraftClass("WorldMap").getDeclaredConstructor(String.class).newInstance(name);
@@ -116,9 +116,9 @@ public class ImageRenderer extends MapRenderer {
             // Create map for world
             Object craftServer = worldServer.getClass().getMethod("getServer").invoke(worldServer);
             Object minecraftServer = craftServer.getClass().getMethod("getServer").invoke(craftServer);
-            List worlds = (List) minecraftServer.getClass().getDeclaredField("worlds").get(minecraftServer);
+            List worlds = (List) minecraftServer.getClass().getField("worlds").get(minecraftServer);
             Object worldServerFromWorlds = worlds.get(0);
-            worldServerFromWorlds.getClass().getMethod("a").invoke(worldServerFromWorlds, name, map);
+            worldServerFromWorlds.getClass().getSuperclass().getMethod("a", name.getClass(), map.getClass().getSuperclass()).invoke(worldServerFromWorlds, name, map);
             // Get mapView
             MapView mapView = (MapView) map.getClass().getField("mapView").get(map);
             Bukkit.getPluginManager().callEvent(new MapInitializeEvent(mapView));
