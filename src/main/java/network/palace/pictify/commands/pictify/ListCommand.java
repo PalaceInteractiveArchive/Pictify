@@ -6,6 +6,7 @@ import network.palace.core.command.CoreCommand;
 import network.palace.core.message.FormattedMessage;
 import network.palace.pictify.Pictify;
 import network.palace.pictify.renderer.ImageRenderer;
+import network.palace.pictify.renderer.RendererManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -29,8 +30,9 @@ public class ListCommand extends CoreCommand {
         sender.sendMessage(ChatColor.GREEN + "There are " + images.size() + " images on this server");
         for (ImageRenderer image : images) {
             if (sender instanceof Player) {
-                new FormattedMessage("- " + image.getId() + ", ").color(ChatColor.YELLOW)
-                        .then(image.getSource()).color(ChatColor.YELLOW).link(image.getSource()).send((Player) sender);
+                new FormattedMessage("- ID " + image.getId() + ", Map ID " + image.getFrameId() + ", ")
+                        .color(ChatColor.YELLOW).then(image.getSource().replace(RendererManager.getPrefix(), ""))
+                        .color(ChatColor.YELLOW).link(image.getSource()).send((Player) sender);
             } else {
                 sender.sendMessage(ChatColor.YELLOW + "- " + image.getId() + ", " + image.getSource());
             }

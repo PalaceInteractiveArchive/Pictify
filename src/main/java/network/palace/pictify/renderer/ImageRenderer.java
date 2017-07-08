@@ -1,9 +1,14 @@
 package network.palace.pictify.renderer;
 
 import lombok.Getter;
+import lombok.Setter;
+import net.minecraft.server.v1_11_R1.WorldMap;
+import net.minecraft.server.v1_11_R1.WorldServer;
 import network.palace.core.Core;
 import org.bukkit.Bukkit;
+import org.bukkit.craftbukkit.v1_11_R1.CraftWorld;
 import org.bukkit.entity.Player;
+import org.bukkit.event.server.MapInitializeEvent;
 import org.bukkit.map.MapCanvas;
 import org.bukkit.map.MapPalette;
 import org.bukkit.map.MapRenderer;
@@ -20,21 +25,23 @@ import java.util.UUID;
  */
 @SuppressWarnings("deprecation")
 public class ImageRenderer extends MapRenderer {
-    @Getter private int id;
-    @Getter private int frameId;
+    @Getter private final int id;
+    @Getter private final int frameId;
     @Getter private BufferedImage image;
     @Getter public int xCap = 0;
     @Getter public int yCap = 0;
     @Getter private String source;
     @Getter private byte[] data;
+    @Getter @Setter private boolean restored = false;
     private List<UUID> rendered = new ArrayList<>();
 
-    public ImageRenderer(int id, BufferedImage image) {
-        this(id, image, "unknown");
+    public ImageRenderer(int id, int frameId, BufferedImage image) {
+        this(id, frameId, image, "unknown");
     }
 
-    public ImageRenderer(int id, BufferedImage image, String source) {
+    public ImageRenderer(int id, int frameId, BufferedImage image, String source) {
         this.id = id;
+        this.frameId = frameId;
         this.image = image;
         this.data = MapPalette.imageToBytes(image);
         this.xCap = image.getWidth(null);
@@ -64,19 +71,32 @@ public class ImageRenderer extends MapRenderer {
     }
 
     public void deactivate() {
-        MapView m = Bukkit.getMap((short) this.frameId);
-        if (m == null) {
-            this.frameId = Bukkit.createMap(Bukkit.getWorlds().get(0)).getId();
-            return;
-        }
+        MapView m = getMapView();
         for (MapRenderer mr : m.getRenderers()) m.removeRenderer(mr);
     }
 
     public void activate() {
         deactivate();
-        MapView m = Bukkit.getMap((short) this.frameId);
-        if (m == null) return;
+        MapView m = getMapView();
         m.addRenderer(this);
+    }
+
+    private MapView getMapView() {
+        MapView m = Bukkit.getMap((short) frameId);
+        if (m != null) {
+            return m;
+        }
+        WorldServer ws = ((CraftWorld) Bukkit.getWorlds().get(0)).getHandle();
+        String name = "map_" + frameId;
+        WorldMap map = new WorldMap(name);
+        map.scale = 3;
+        map.a(ws.getWorldData().b(), ws.getWorldData().d(), map.scale);
+        map.map = (byte) ws.dimension;
+        map.c();
+        ws.getServer().getServer().worlds.get(0).a(name, map);
+        MapInitializeEvent event = new MapInitializeEvent(map.mapView);
+        Bukkit.getPluginManager().callEvent(event);
+        return map.mapView;
     }
 
     public void leave(UUID uuid) {

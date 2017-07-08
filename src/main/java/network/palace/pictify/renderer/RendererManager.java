@@ -16,10 +16,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * @author Marc
@@ -49,7 +46,7 @@ public class RendererManager {
             return;
         }
         YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
-        List<Integer> ids = idConfig.getIntegerList("ids");
+        List<String> ids = idConfig.getStringList("ids");
         if (ids.isEmpty()) {
             Core.logMessage("Pictify Loader", "No images to load, finished!");
             return;
@@ -64,7 +61,23 @@ public class RendererManager {
             ResultSet result = sql.executeQuery();
             while (result.next()) {
                 int id = result.getInt("id");
-                if (!ids.contains(id)) {
+                int frameId = 0;
+                boolean contains = false;
+                for (String s : ids) {
+                    try {
+                        int dbId = Integer.parseInt(s.split(":")[0]);
+                        if (dbId == id) {
+                            contains = true;
+                            frameId = Integer.parseInt(s.split(":")[1]);
+                            break;
+                        }
+                    } catch (Exception e) {
+                        Core.logMessage("Pictify Loader Error", "Error parsing config value '" + s +
+                                "' Cause: " + e.getMessage());
+                        break;
+                    }
+                }
+                if (!contains) {
                     continue;
                 }
                 try {
@@ -73,7 +86,7 @@ public class RendererManager {
                     if (image == null) {
                         continue;
                     }
-                    ImageRenderer renderer = new ImageRenderer(id, image, source);
+                    ImageRenderer renderer = new ImageRenderer(id, frameId, image, source);
                     Core.logMessage("Pictify Loader", "Loaded renderer with id " + renderer.getId());
                     images.put(renderer.getId(), renderer);
                 } catch (Exception e) {
@@ -110,19 +123,19 @@ public class RendererManager {
         images.put(image.getId(), image);
         File idFile = new File("plugins/Pictify/ids.yml");
         YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
-        List<Integer> ids = idConfig.getIntegerList("ids");
-        if (ids.add(image.getId())) {
+        List<String> ids = idConfig.getStringList("ids");
+        if (ids.add(image.getId() + ":" + image.getFrameId())) {
             idConfig.set("ids", ids);
             idConfig.save(idFile);
         }
     }
 
     public void removeImage(int id) throws IOException {
-        images.remove(id);
+        ImageRenderer image = images.remove(id);
         File idFile = new File("plugins/Pictify/ids.yml");
         YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
-        List<Integer> ids = idConfig.getIntegerList("ids");
-        ids.remove(id);
+        List<String> ids = idConfig.getStringList("ids");
+        ids.remove(id + ":" + image.getFrameId());
         idConfig.set("ids", ids);
         idConfig.save(idFile);
     }
@@ -153,6 +166,34 @@ public class RendererManager {
             return false;
         }
         player.sendMessage(ChatColor.GREEN + "Found image source, creating renderer now...");
+
+        File idFile = new File("plugins/Pictify/ids.yml");
+        YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
+        List<String> ids = idConfig.getStringList("ids");
+        List<Integer> frameIds = new ArrayList<>();
+        for (String s : ids) {
+            try {
+                int frameId = Integer.parseInt(s.split(":")[1]);
+                frameIds.add(frameId);
+            } catch (Exception e) {
+                Core.logMessage("Pictify Loader Error", "Error parsing config value '" + s +
+                        "' Cause: " + e.getMessage());
+            }
+        }
+        Collections.sort(frameIds);
+        int frameId = 1;
+        for (int i : frameIds) {
+            if (i == frameId) {
+                frameId++;
+            } else {
+                break;
+            }
+        }
+        if (frameIds.contains(frameId)) {
+            player.sendMessage("Didn't find the smallest number " + frameId);
+            return false;
+        }
+
         ImageRenderer image;
         try {
             URL url = new URL(getPrefix() + source + ".png");
@@ -162,7 +203,7 @@ public class RendererManager {
                         url.toString());
                 return false;
             }
-            image = new ImageRenderer(id, bufferedImage, source);
+            image = new ImageRenderer(id, frameId, bufferedImage, url.toString());
         } catch (MalformedURLException e) {
             player.sendMessage(ChatColor.RED + "Error requesting image with source '" + source + "'!");
             e.printStackTrace();

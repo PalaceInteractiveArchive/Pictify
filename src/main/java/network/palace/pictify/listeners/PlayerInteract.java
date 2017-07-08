@@ -56,10 +56,34 @@ public class PlayerInteract implements Listener {
         int id = map.getDurability();
         RendererManager manager = Pictify.getInstance().getRendererManager();
         ImageRenderer image = manager.getImage(id);
-        if (image != null) {
-            player.sendMessage(ChatColor.GREEN + "This image has already been imported!");
+        if (image != null && image.isRestored()) {
+            player.sendMessage(ChatColor.GREEN + "This image has already been restored!");
             return;
         }
-        manager.importFromDatabase(id, player);
+        if (!manager.importFromDatabase(id, player)) {
+            return;
+        }
+        image = manager.getImage(id);
+        if (image == null) {
+            player.sendMessage(ChatColor.RED + "Image is still null... not converting world maps");
+            return;
+        }
+        image.setRestored(true);
+        player.sendMessage(ChatColor.GREEN + "Updating world maps from old ID (" + id + ") to new ID (" + image.getFrameId() + ")");
+        int count = 0;
+        for (ItemFrame itemFrame : frame.getWorld().getEntitiesByClass(ItemFrame.class)) {
+            ItemStack item = itemFrame.getItem();
+            if (item == null || !item.getType().equals(Material.MAP)) {
+                continue;
+            }
+            int oldFrameId = item.getDurability();
+            if (oldFrameId != id) {
+                continue;
+            }
+            item.setDurability((short) image.getFrameId());
+            itemFrame.setItem(item);
+            count++;
+        }
+        player.sendMessage(ChatColor.GOLD + "Updated " + count + " world maps!");
     }
 }
