@@ -33,9 +33,9 @@ public class RendererManager {
     public void load() {
         images.clear();
         File dir = new File("plugins/Pictify");
-        if (!dir.exists()) {
-            dir.mkdir();
-        }
+        if (!dir.exists()) dir.mkdir();
+        File cacheDir = new File("plugins/Pictify/cache");
+        if (!cacheDir.exists()) cacheDir.mkdir();
         File idFile = new File("plugins/Pictify/ids.yml");
         if (!idFile.exists()) {
             try {

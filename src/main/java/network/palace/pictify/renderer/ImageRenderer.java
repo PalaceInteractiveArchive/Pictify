@@ -5,6 +5,9 @@ import lombok.Setter;
 import net.minecraft.server.v1_11_R1.WorldMap;
 import net.minecraft.server.v1_11_R1.WorldServer;
 import network.palace.core.Core;
+import network.palace.pictify.Pictify;
+import network.palace.pictify.utils.FilesystemCache;
+import network.palace.pictify.utils.ImageUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.v1_11_R1.CraftWorld;
 import org.bukkit.entity.Player;
@@ -15,6 +18,8 @@ import org.bukkit.map.MapRenderer;
 import org.bukkit.map.MapView;
 
 import java.awt.image.BufferedImage;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -48,6 +53,29 @@ public class ImageRenderer extends MapRenderer {
         this.yCap = image.getHeight(null);
         this.source = source;
         activate();
+//        initialize();
+    }
+
+    private void initialize() {
+        FilesystemCache.setLoader((short) id, new FilesystemCache.Loader(this) {
+            public BufferedImage load() {
+                RendererManager manager = Pictify.getInstance().getRendererManager();
+                String source = manager.getPrefix() + getSource() + ".png";
+                try {
+                    image = ImageUtil.loadImage(id, new URL(source));
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                }
+                if (image == null) {
+                    Core.logMessage("Pictify Renderer ID " + id, "The source does not contain an image");
+                    return null;
+                }
+//                image = ImageUtil.scale(image, 128, 128);
+                xCap = image.getWidth(null);
+                yCap = image.getHeight(null);
+                return image;
+            }
+        });
     }
 
     @Override
@@ -56,6 +84,8 @@ public class ImageRenderer extends MapRenderer {
             // Already sent this player the map, no need to send it again
             return;
         }
+//        byte[] data = getCache();
+        System.out.println("LENGTH: " + data.length);
         for (int x2 = 0; x2 < this.xCap; x2++) {
             for (int y2 = 0; y2 < this.yCap; y2++) {
                 try {
@@ -68,6 +98,14 @@ public class ImageRenderer extends MapRenderer {
         }
         rendered.add(p.getUniqueId());
         p.sendMap(view);
+    }
+
+    private byte[] getCache() {
+        byte[] data = FilesystemCache.getByteData(this);
+        if (data == null) {
+            return this.data;
+        }
+        return data;
     }
 
     public void deactivate() {
