@@ -4,7 +4,7 @@ import network.palace.core.command.CommandMeta;
 import network.palace.core.command.CommandPermission;
 import network.palace.core.command.CoreCommand;
 import network.palace.core.player.Rank;
-import network.palace.pictify.commands.pictify.ListCommand;
+import network.palace.pictify.commands.pictify.*;
 
 /**
  * @author Marc
@@ -16,8 +16,11 @@ public class PictifyCommand extends CoreCommand {
 
     public PictifyCommand() {
         super("pictify");
-
         registerSubCommand(new ListCommand());
+        registerSubCommand(new GiveCommand());
+        registerSubCommand(new ReloadCommand());
+        registerSubCommand(new RemoveCommand());
+        registerSubCommand(new RestoreCommand());
     }
 
     @Override

@@ -21,18 +21,25 @@ import java.util.UUID;
 @SuppressWarnings("deprecation")
 public class ImageRenderer extends MapRenderer {
     @Getter private int id;
+    @Getter private int frameId;
     @Getter private BufferedImage image;
     @Getter public int xCap = 0;
     @Getter public int yCap = 0;
+    @Getter private String source;
     @Getter private byte[] data;
     private List<UUID> rendered = new ArrayList<>();
 
     public ImageRenderer(int id, BufferedImage image) {
+        this(id, image, "unknown");
+    }
+
+    public ImageRenderer(int id, BufferedImage image, String source) {
         this.id = id;
         this.image = image;
         this.data = MapPalette.imageToBytes(image);
         this.xCap = image.getWidth(null);
         this.yCap = image.getHeight(null);
+        this.source = source;
         activate();
     }
 
@@ -57,14 +64,19 @@ public class ImageRenderer extends MapRenderer {
     }
 
     public void deactivate() {
-        MapView m = Bukkit.getMap((short) this.id);
-        for (MapRenderer mr : m.getRenderers())
-            m.removeRenderer(mr);
+        MapView m = Bukkit.getMap((short) this.frameId);
+        if (m == null) {
+            this.frameId = Bukkit.createMap(Bukkit.getWorlds().get(0)).getId();
+            return;
+        }
+        for (MapRenderer mr : m.getRenderers()) m.removeRenderer(mr);
     }
 
     public void activate() {
         deactivate();
-        Bukkit.getMap((short) this.id).addRenderer(this);
+        MapView m = Bukkit.getMap((short) this.frameId);
+        if (m == null) return;
+        m.addRenderer(this);
     }
 
     public void leave(UUID uuid) {

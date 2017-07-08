@@ -3,7 +3,10 @@ package network.palace.pictify;
 import lombok.Getter;
 import network.palace.core.plugin.Plugin;
 import network.palace.core.plugin.PluginInfo;
+import network.palace.pictify.commands.PictifyCommand;
+import network.palace.pictify.listeners.PlayerInteract;
 import network.palace.pictify.listeners.PlayerJoinAndLeave;
+import network.palace.pictify.renderer.ImageRenderer;
 import network.palace.pictify.renderer.RendererManager;
 
 /**
@@ -20,9 +23,14 @@ public class Pictify extends Plugin {
         instance = this;
         rendererManager = new RendererManager();
         registerListener(new PlayerJoinAndLeave());
+        registerListener(new PlayerInteract());
+        registerCommand(new PictifyCommand());
     }
 
     @Override
     protected void onPluginDisable() throws Exception {
+        for (ImageRenderer image : rendererManager.getImages()) {
+            image.deactivate();
+        }
     }
 }

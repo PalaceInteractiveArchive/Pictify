@@ -1,17 +1,22 @@
 package network.palace.pictify.renderer;
 
+import lombok.Getter;
 import network.palace.core.Core;
+import network.palace.core.player.CPlayer;
 import network.palace.pictify.utils.ImageUtil;
+import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +26,7 @@ import java.util.UUID;
  * @since 7/2/17
  */
 public class RendererManager {
-    private static final String prefix = "https://staff.palace.network/pictify/images/";
+    @Getter private static final String prefix = "https://staff.palace.network/pictify/images/";
     private HashMap<Integer, ImageRenderer> images = new HashMap<>();
 
     public RendererManager() {
@@ -49,8 +54,13 @@ public class RendererManager {
             Core.logMessage("Pictify Loader", "No images to load, finished!");
             return;
         }
-        try (Connection connection = Core.getSqlUtil().getConnection()) {
-            PreparedStatement sql = connection.prepareStatement("SELECT * FROM pixelator");
+        Connection connection = Core.getSqlUtil().getConnection();
+        if (connection == null) {
+            Core.logMessage("Pictify Loader", "Could not establish an SQL connection!");
+            return;
+        }
+        try {
+            PreparedStatement sql = connection.prepareStatement("SELECT * FROM pictify");
             ResultSet result = sql.executeQuery();
             while (result.next()) {
                 int id = result.getInt("id");
@@ -58,11 +68,12 @@ public class RendererManager {
                     continue;
                 }
                 try {
-                    BufferedImage image = ImageUtil.loadImage(id, new URL(prefix + result.getString("source")));
+                    String source = prefix + result.getString("source") + ".png";
+                    BufferedImage image = ImageUtil.loadImage(id, new URL(source));
                     if (image == null) {
                         continue;
                     }
-                    ImageRenderer renderer = new ImageRenderer(id, image);
+                    ImageRenderer renderer = new ImageRenderer(id, image, source);
                     Core.logMessage("Pictify Loader", "Loaded renderer with id " + renderer.getId());
                     images.put(renderer.getId(), renderer);
                 } catch (Exception e) {
@@ -81,5 +92,90 @@ public class RendererManager {
     public void leave(UUID uuid) {
         for (ImageRenderer renderer : images.values())
             renderer.leave(uuid);
+    }
+
+    public List<ImageRenderer> getImages() {
+        return new ArrayList<>(images.values());
+    }
+
+    public List<Integer> getIds() {
+        return new ArrayList<>(images.keySet());
+    }
+
+    public ImageRenderer getImage(int id) {
+        return images.get(id);
+    }
+
+    public void addImage(ImageRenderer image) throws IOException {
+        images.put(image.getId(), image);
+        File idFile = new File("plugins/Pictify/ids.yml");
+        YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
+        List<Integer> ids = idConfig.getIntegerList("ids");
+        if (ids.add(image.getId())) {
+            idConfig.set("ids", ids);
+            idConfig.save(idFile);
+        }
+    }
+
+    public void removeImage(int id) throws IOException {
+        images.remove(id);
+        File idFile = new File("plugins/Pictify/ids.yml");
+        YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
+        List<Integer> ids = idConfig.getIntegerList("ids");
+        ids.remove(id);
+        idConfig.set("ids", ids);
+        idConfig.save(idFile);
+    }
+
+    public boolean importFromDatabase(int id, CPlayer player) {
+        Connection connection = Core.getSqlUtil().getConnection();
+        if (connection == null) {
+            player.sendMessage(ChatColor.RED + "Database connection is null, can't proceed!");
+            return false;
+        }
+        String source;
+        try {
+            PreparedStatement getImage = connection.prepareStatement("SELECT * FROM pictify WHERE id=?");
+            getImage.setInt(1, id);
+            ResultSet result = getImage.executeQuery();
+            if (!result.next()) {
+                result.close();
+                getImage.close();
+                player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "No image exists with ID " + id + "!");
+                return false;
+            }
+            source = result.getString("source");
+            result.close();
+            getImage.close();
+        } catch (SQLException e) {
+            player.sendMessage(ChatColor.RED + "SQL Error: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+        player.sendMessage(ChatColor.GREEN + "Found image source, creating renderer now...");
+        ImageRenderer image;
+        try {
+            URL url = new URL(getPrefix() + source + ".png");
+            BufferedImage bufferedImage = ImageUtil.loadImage(id, url);
+            if (bufferedImage == null) {
+                player.sendMessage(ChatColor.RED + "Error creating image object with URL " + ChatColor.GREEN +
+                        url.toString());
+                return false;
+            }
+            image = new ImageRenderer(id, bufferedImage, source);
+        } catch (MalformedURLException e) {
+            player.sendMessage(ChatColor.RED + "Error requesting image with source '" + source + "'!");
+            e.printStackTrace();
+            return false;
+        }
+        try {
+            addImage(image);
+        } catch (IOException e) {
+            player.sendMessage(ChatColor.RED + "Error saving ID to server file ids.yml");
+            e.printStackTrace();
+            return false;
+        }
+        player.sendMessage(ChatColor.GREEN + "Renderer with ID " + id + " created and added to this server");
+        return true;
     }
 }
