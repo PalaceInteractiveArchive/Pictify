@@ -1,5 +1,6 @@
 package network.palace.pictify.commands.pictify;
 
+import network.palace.core.Core;
 import network.palace.core.command.CommandException;
 import network.palace.core.command.CoreCommand;
 import network.palace.core.player.CPlayer;
@@ -17,6 +18,12 @@ public class RestoreCommand extends CoreCommand {
 
     @Override
     protected void handleCommand(CPlayer player, String[] args) throws CommandException {
-        RestoreUtil.toggle(player);
+        if (args.length == 0) {
+            RestoreUtil.toggle(player);
+        } else {
+            CPlayer p = Core.getPlayerManager().getPlayer(args[0]);
+            if (p != null)
+                RestoreUtil.toggle(p);
+        }
     }
 }

@@ -5,22 +5,16 @@ import com.comphenix.protocol.utility.MinecraftReflection;
 import lombok.Getter;
 import lombok.Setter;
 import network.palace.core.Core;
-import network.palace.pictify.Pictify;
-import network.palace.pictify.utils.FilesystemCache;
-import network.palace.pictify.utils.ImageUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.server.MapInitializeEvent;
 import org.bukkit.map.MapCanvas;
-import org.bukkit.map.MapPalette;
 import org.bukkit.map.MapRenderer;
 import org.bukkit.map.MapView;
 
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -41,42 +35,18 @@ public class ImageRenderer extends MapRenderer {
     @Getter @Setter private boolean restored = false;
     private List<UUID> rendered = new ArrayList<>();
 
-    public ImageRenderer(int id, int frameId, BufferedImage image) {
-        this(id, frameId, image, "unknown");
+    public ImageRenderer(int id, int frameId, byte[] data, int xCap, int yCap) {
+        this(id, frameId, data, xCap, yCap, "unknown");
     }
 
-    public ImageRenderer(int id, int frameId, BufferedImage image, String source) {
+    public ImageRenderer(int id, int frameId, byte[] data, int xCap, int yCap, String source) {
         this.id = id;
         this.frameId = frameId;
-        this.image = image;
-        this.data = MapPalette.imageToBytes(image);
-        this.xCap = image.getWidth(null);
-        this.yCap = image.getHeight(null);
+        this.xCap = xCap;
+        this.yCap = yCap;
+        this.data = data;
         this.source = source;
         activate();
-//        initialize();
-    }
-
-    private void initialize() {
-        FilesystemCache.setLoader((short) id, new FilesystemCache.Loader(this) {
-            public BufferedImage load() {
-                RendererManager manager = Pictify.getInstance().getRendererManager();
-                String source = manager.getPrefix() + getSource() + ".png";
-                try {
-                    image = ImageUtil.loadImage(id, new URL(source));
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                }
-                if (image == null) {
-                    Core.logMessage("Pictify Renderer ID " + id, "The source does not contain an image");
-                    return null;
-                }
-//                image = ImageUtil.scale(image, 128, 128);
-                xCap = image.getWidth(null);
-                yCap = image.getHeight(null);
-                return image;
-            }
-        });
     }
 
     @Override
@@ -85,28 +55,18 @@ public class ImageRenderer extends MapRenderer {
             // Already sent this player the map, no need to send it again
             return;
         }
-//        byte[] data = getCache();
-        System.out.println("LENGTH: " + data.length);
         for (int x2 = 0; x2 < this.xCap; x2++) {
             for (int y2 = 0; y2 < this.yCap; y2++) {
                 try {
                     canvas.setPixel(x2, y2, data[(y2 * this.yCap + x2)]);
                 } catch (ArrayIndexOutOfBoundsException e) {
                     Core.logMessage("Renderer " + id, e.getMessage());
-                    e.printStackTrace();
+                    e.printStackTrace(System.out);
                 }
             }
         }
         rendered.add(p.getUniqueId());
         p.sendMap(view);
-    }
-
-    private byte[] getCache() {
-        byte[] data = FilesystemCache.getByteData(this);
-        if (data == null) {
-            return this.data;
-        }
-        return data;
     }
 
     public void deactivate() {

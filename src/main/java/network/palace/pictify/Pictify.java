@@ -13,7 +13,7 @@ import network.palace.pictify.renderer.RendererManager;
  * @author Marc
  * @since 6/27/17
  */
-@PluginInfo(name = "Pictify", version = "1.0.1", depend = "Core", canReload = true)
+@PluginInfo(name = "Pictify", version = "1.0.2", depend = {"Core", "ProtocolLib"}, canReload = true)
 public class Pictify extends Plugin {
     @Getter private static Pictify instance;
     @Getter private RendererManager rendererManager;

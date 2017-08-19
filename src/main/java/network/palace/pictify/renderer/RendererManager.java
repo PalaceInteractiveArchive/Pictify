@@ -4,12 +4,13 @@ import lombok.Getter;
 import network.palace.core.Core;
 import network.palace.core.player.CPlayer;
 import network.palace.pictify.utils.ImageUtil;
+import org.apache.commons.io.IOUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.map.MapPalette;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
@@ -22,9 +23,11 @@ import java.util.*;
  * @author Marc
  * @since 7/2/17
  */
+@SuppressWarnings("deprecation")
 public class RendererManager {
     @Getter private static final String prefix = "https://staff.palace.network/pictify/images/";
     private HashMap<Integer, ImageRenderer> images = new HashMap<>();
+    private boolean running = false;
 
     public RendererManager() {
         load();
@@ -82,11 +85,30 @@ public class RendererManager {
                 }
                 try {
                     String source = prefix + result.getString("source") + ".png";
-                    BufferedImage image = ImageUtil.loadImage(id, new URL(source));
-                    if (image == null) {
-                        continue;
+                    ImageRenderer renderer;
+                    File cacheFile = new File("plugins/Pictify/cache/" + id + ".cache");
+                    if (cacheFile.exists()) {
+                        byte[] data = IOUtils.toByteArray(new FileInputStream(cacheFile));
+                        DataInputStream inputStream = new DataInputStream(new ByteArrayInputStream(data));
+                        int xCap = inputStream.readInt();
+                        int yCap = inputStream.readInt();
+                        byte[] out = new byte[data.length - 8];
+                        inputStream.readFully(out);
+                        inputStream.close();
+                        renderer = new ImageRenderer(id, frameId, out, xCap, yCap, source);
+                    } else {
+                        BufferedImage image = ImageUtil.loadImage(id, new URL(source));
+                        if (image == null) continue;
+                        DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(cacheFile));
+                        dataOutputStream.writeInt(image.getWidth(null));
+                        dataOutputStream.writeInt(image.getHeight(null));
+                        byte[] data = MapPalette.imageToBytes(image);
+                        dataOutputStream.write(data);
+                        System.out.println(dataOutputStream.size());
+                        dataOutputStream.close();
+                        renderer = new ImageRenderer(id, frameId, data, image.getWidth(null),
+                                image.getHeight(null), source);
                     }
-                    ImageRenderer renderer = new ImageRenderer(id, frameId, image, source);
                     Core.logMessage("Pictify Loader", "Loaded renderer with id " + renderer.getId());
                     images.put(renderer.getId(), renderer);
                 } catch (Exception e) {
@@ -103,6 +125,8 @@ public class RendererManager {
     }
 
     public void leave(UUID uuid) {
+        if (uuid == null)
+            return;
         for (ImageRenderer renderer : images.values())
             renderer.leave(uuid);
     }
@@ -141,9 +165,15 @@ public class RendererManager {
     }
 
     public boolean importFromDatabase(int id, CPlayer player) {
+        if (running) {
+            player.sendMessage(ChatColor.RED + "Pictify is currently downloading another image, try again soon!");
+            return false;
+        }
+        running = true;
         Connection connection = Core.getSqlUtil().getConnection();
         if (connection == null) {
             player.sendMessage(ChatColor.RED + "Database connection is null, can't proceed!");
+            running = false;
             return false;
         }
         String source;
@@ -155,6 +185,7 @@ public class RendererManager {
                 result.close();
                 getImage.close();
                 player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "No image exists with ID " + id + "!");
+                running = false;
                 return false;
             }
             source = result.getString("source");
@@ -163,6 +194,7 @@ public class RendererManager {
         } catch (SQLException e) {
             player.sendMessage(ChatColor.RED + "SQL Error: " + e.getMessage());
             e.printStackTrace();
+            running = false;
             return false;
         }
         player.sendMessage(ChatColor.GREEN + "Found image source, creating renderer now...");
@@ -191,6 +223,7 @@ public class RendererManager {
         }
         if (frameIds.contains(frameId)) {
             player.sendMessage("Didn't find the smallest number " + frameId);
+            running = false;
             return false;
         }
 
@@ -201,12 +234,15 @@ public class RendererManager {
             if (bufferedImage == null) {
                 player.sendMessage(ChatColor.RED + "Error creating image object with URL " + ChatColor.GREEN +
                         url.toString());
+                running = false;
                 return false;
             }
-            image = new ImageRenderer(id, frameId, bufferedImage, url.toString());
+            byte[] data = MapPalette.imageToBytes(bufferedImage);
+            image = new ImageRenderer(id, frameId, data, bufferedImage.getWidth(null), bufferedImage.getHeight(null));
         } catch (MalformedURLException e) {
             player.sendMessage(ChatColor.RED + "Error requesting image with source '" + source + "'!");
             e.printStackTrace();
+            running = false;
             return false;
         }
         try {
@@ -214,9 +250,11 @@ public class RendererManager {
         } catch (IOException e) {
             player.sendMessage(ChatColor.RED + "Error saving ID to server file ids.yml");
             e.printStackTrace();
+            running = false;
             return false;
         }
         player.sendMessage(ChatColor.GREEN + "Renderer with ID " + id + " created and added to this server");
+        running = false;
         return true;
     }
 }

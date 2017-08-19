@@ -25,6 +25,8 @@ public class PlayerJoinAndLeave implements Listener {
     }
 
     private void onPlayerLeave(CPlayer player) {
+        if (player == null)
+            return;
         Pictify.getInstance().getRendererManager().leave(player.getUniqueId());
     }
 }

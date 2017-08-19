@@ -10,8 +10,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
-import java.sql.Connection;
-
 /**
  * @author Marc
  * @since 7/7/17
@@ -39,11 +37,6 @@ public class GiveCommand extends CoreCommand {
         Core.runTaskAsynchronously(() -> {
             if (!manager.getIds().contains(id)) {
                 player.sendMessage(ChatColor.YELLOW + "ID " + id + " isn't added to this server, checking database...");
-                Connection connection = Core.getSqlUtil().getConnection();
-                if (connection == null) {
-                    player.sendMessage(ChatColor.RED + "Database connection is null, can't proceed!");
-                    return;
-                }
                 if (!manager.importFromDatabase(id, player)) {
                     return;
                 }
