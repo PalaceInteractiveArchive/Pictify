@@ -60,7 +60,7 @@ public class RendererManager {
             return;
         }
         try {
-            PreparedStatement sql = connection.prepareStatement("SELECT * FROM pictify");
+            PreparedStatement sql = connection.prepareStatement("SELECT id,source FROM pictify");
             ResultSet result = sql.executeQuery();
             while (result.next()) {
                 int id = result.getInt("id");
@@ -98,6 +98,7 @@ public class RendererManager {
                         renderer = new ImageRenderer(id, frameId, out, xCap, yCap, source);
                     } else {
                         BufferedImage image = ImageUtil.loadImage(id, new URL(source));
+                        image = ImageUtil.scale(image, 128, 128);
                         if (image == null) continue;
                         DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(cacheFile));
                         dataOutputStream.writeInt(image.getWidth(null));
@@ -143,6 +144,15 @@ public class RendererManager {
         return images.get(id);
     }
 
+    public ImageRenderer getLocalImage(int id) {
+        for (ImageRenderer image : getImages()) {
+            if (image.getFrameId() == id) {
+                return image;
+            }
+        }
+        return null;
+    }
+
     public void addImage(ImageRenderer image) throws IOException {
         images.put(image.getId(), image);
         File idFile = new File("plugins/Pictify/ids.yml");
@@ -154,12 +164,23 @@ public class RendererManager {
         }
     }
 
-    public void removeImage(int id) throws IOException {
-        ImageRenderer image = images.remove(id);
+    public void removeImage(int id, boolean frameID) throws IOException {
+        ImageRenderer image = null;
+        if (frameID) {
+            for (ImageRenderer i : getImages()) {
+                if (i.getFrameId() == id) {
+                    image = i;
+                    break;
+                }
+            }
+        } else {
+            image = images.remove(id);
+        }
+        if (image == null) return;
         File idFile = new File("plugins/Pictify/ids.yml");
         YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
         List<String> ids = idConfig.getStringList("ids");
-        ids.remove(id + ":" + image.getFrameId());
+        ids.remove(image.getId() + ":" + image.getFrameId());
         idConfig.set("ids", ids);
         idConfig.save(idFile);
     }
@@ -237,6 +258,7 @@ public class RendererManager {
                 running = false;
                 return false;
             }
+            bufferedImage = ImageUtil.scale(bufferedImage, 128, 128);
             byte[] data = MapPalette.imageToBytes(bufferedImage);
             image = new ImageRenderer(id, frameId, data, bufferedImage.getWidth(null), bufferedImage.getHeight(null));
         } catch (MalformedURLException e) {
@@ -245,6 +267,7 @@ public class RendererManager {
             running = false;
             return false;
         }
+        image.setSource(getPrefix() + source + ".png");
         try {
             addImage(image);
         } catch (IOException e) {

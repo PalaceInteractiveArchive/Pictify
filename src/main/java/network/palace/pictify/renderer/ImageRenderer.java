@@ -30,7 +30,7 @@ public class ImageRenderer extends MapRenderer {
     @Getter private BufferedImage image;
     @Getter public int xCap = 0;
     @Getter public int yCap = 0;
-    @Getter private String source;
+    @Getter @Setter private String source;
     @Getter private byte[] data;
     @Getter @Setter private boolean restored = false;
     private List<UUID> rendered = new ArrayList<>();

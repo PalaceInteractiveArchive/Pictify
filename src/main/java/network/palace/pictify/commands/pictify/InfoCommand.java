@@ -8,22 +8,20 @@ import network.palace.pictify.renderer.RendererManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
-import java.io.IOException;
-
 /**
  * @author Marc
- * @since 7/7/17
+ * @since 9/8/17
  */
-public class RemoveCommand extends CoreCommand {
+public class InfoCommand extends CoreCommand {
 
-    public RemoveCommand() {
-        super("remove");
+    public InfoCommand() {
+        super("info");
     }
 
     @Override
     protected void handleCommandUnspecific(CommandSender sender, String[] args) throws CommandException {
         if (args.length != 2) {
-            sender.sendMessage(ChatColor.RED + "/pictify remove [Local/Remote] [ID]");
+            sender.sendMessage(ChatColor.RED + "/pictify info [Local/Remote] [ID]");
             return;
         }
         int id;
@@ -35,10 +33,8 @@ public class RemoveCommand extends CoreCommand {
         }
         RendererManager manager = Pictify.getInstance().getRendererManager();
         ImageRenderer image;
-        boolean frame = false;
         if (args[0].toLowerCase().equals("local")) {
             image = manager.getLocalImage(id);
-            frame = true;
         } else {
             image = manager.getImage(id);
         }
@@ -46,15 +42,8 @@ public class RemoveCommand extends CoreCommand {
             sender.sendMessage(ChatColor.RED + "There is no local image with ID " + id + "!");
             return;
         }
-        image.deactivate();
-        try {
-            manager.removeImage(id, frame);
-        } catch (IOException e) {
-            sender.sendMessage(ChatColor.RED + "Error removing ID from server file ids.yml");
-            e.printStackTrace();
-            return;
-        }
-        sender.sendMessage(ChatColor.GREEN + "Successfully removed all local data for ID " + id +
-                ". To permanently delete an image, you must use the Pictify Website.");
+        sender.sendMessage(ChatColor.GREEN + "Image ID: " + image.getId());
+        sender.sendMessage(ChatColor.GREEN + "Frame ID: " + image.getFrameId());
+        sender.sendMessage(ChatColor.GREEN + "Source: " + image.getSource());
     }
 }
