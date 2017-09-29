@@ -30,7 +30,7 @@ public class PlayerInteract implements Listener {
         if (player == null) {
             return;
         }
-        if (player.getRank().getRankId() < Rank.KNIGHT.getRankId() || !RestoreUtil.isRestoring(player.getUniqueId())) {
+        if (player.getRank().getRankId() < Rank.MOD.getRankId() || !RestoreUtil.isRestoring(player.getUniqueId())) {
             return;
         }
         Entity e = event.getRightClicked();

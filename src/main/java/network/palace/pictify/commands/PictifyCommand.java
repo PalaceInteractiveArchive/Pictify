@@ -11,7 +11,7 @@ import network.palace.pictify.commands.pictify.*;
  * @since 7/7/17
  */
 @CommandMeta(aliases = "pic", description = "Default pictify command")
-@CommandPermission(rank = Rank.KNIGHT)
+@CommandPermission(rank = Rank.MOD)
 public class PictifyCommand extends CoreCommand {
 
     public PictifyCommand() {
