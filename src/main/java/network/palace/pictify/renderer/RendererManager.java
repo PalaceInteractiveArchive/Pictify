@@ -5,6 +5,7 @@ import network.palace.core.Core;
 import network.palace.core.player.CPlayer;
 import network.palace.pictify.utils.ImageUtil;
 import org.apache.commons.io.IOUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.map.MapPalette;
@@ -234,14 +235,24 @@ public class RendererManager {
             }
         }
         Collections.sort(frameIds);
-        int frameId = 1;
-        for (int i : frameIds) {
-            if (i == frameId) {
-                frameId++;
-            } else {
-                break;
-            }
+        int frameId = 0;
+
+        boolean checking = true;
+
+        while (checking) {
+            frameId++;
+            if (frameIds.contains(frameId)) continue;
+            if (Bukkit.getMap((short) frameId) != null) continue;
+            checking = false;
         }
+
+//        for (int i : frameIds) {
+//            if (i == frameId) {
+//                frameId++;
+//            } else {
+//                break;
+//            }
+//        }
         if (frameIds.contains(frameId)) {
             player.sendMessage("Didn't find the smallest number " + frameId);
             running = false;
