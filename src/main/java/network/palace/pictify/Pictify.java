@@ -4,8 +4,7 @@ import lombok.Getter;
 import network.palace.core.plugin.Plugin;
 import network.palace.core.plugin.PluginInfo;
 import network.palace.pictify.commands.PictifyCommand;
-import network.palace.pictify.listeners.PlayerInteract;
-import network.palace.pictify.listeners.PlayerJoinAndLeave;
+import network.palace.pictify.listeners.PlayerLeave;
 import network.palace.pictify.renderer.ImageRenderer;
 import network.palace.pictify.renderer.RendererManager;
 
@@ -13,7 +12,7 @@ import network.palace.pictify.renderer.RendererManager;
  * @author Marc
  * @since 6/27/17
  */
-@PluginInfo(name = "Pictify", version = "1.0.6", depend = {"Core", "ProtocolLib"}, canReload = true)
+@PluginInfo(name = "Pictify", version = "1.0.7-1.13", depend = {"Core", "ProtocolLib"}, canReload = true)
 public class Pictify extends Plugin {
     @Getter private static Pictify instance;
     @Getter private RendererManager rendererManager;
@@ -22,8 +21,7 @@ public class Pictify extends Plugin {
     protected void onPluginEnable() throws Exception {
         instance = this;
         rendererManager = new RendererManager();
-        registerListener(new PlayerJoinAndLeave());
-        registerListener(new PlayerInteract());
+        registerListener(new PlayerLeave());
         registerCommand(new PictifyCommand());
     }
 

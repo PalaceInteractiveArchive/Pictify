@@ -3,6 +3,7 @@ package network.palace.pictify.renderer;
 import lombok.Getter;
 import network.palace.core.Core;
 import network.palace.core.player.CPlayer;
+import network.palace.core.utils.TextUtil;
 import network.palace.pictify.utils.ImageUtil;
 import org.apache.commons.io.IOUtils;
 import org.bukkit.Bukkit;
@@ -24,7 +25,6 @@ import java.util.*;
  * @author Marc
  * @since 7/2/17
  */
-@SuppressWarnings("deprecation")
 public class RendererManager {
     @Getter private static final String prefix = "https://staff.palace.network/pictify/images/";
     private HashMap<Integer, ImageRenderer> images = new HashMap<>();
@@ -81,9 +81,9 @@ public class RendererManager {
                         break;
                     }
                 }
-                if (!contains) {
-                    continue;
-                }
+
+                if (!contains) continue;
+
                 try {
                     String source = prefix + result.getString("source") + ".png";
                     ImageRenderer renderer;
@@ -106,12 +106,10 @@ public class RendererManager {
                         dataOutputStream.writeInt(image.getHeight(null));
                         byte[] data = MapPalette.imageToBytes(image);
                         dataOutputStream.write(data);
-                        System.out.println(dataOutputStream.size());
                         dataOutputStream.close();
-                        renderer = new ImageRenderer(id, frameId, data, image.getWidth(null),
-                                image.getHeight(null), source);
+                        renderer = new ImageRenderer(id, frameId, data, image.getWidth(null), image.getHeight(null), source);
                     }
-                    Core.logMessage("Pictify Loader", "Loaded renderer with id " + renderer.getId());
+//                    Core.logMessage("Pictify Loader", "Loaded renderer with id " + renderer.getId());
                     images.put(renderer.getId(), renderer);
                 } catch (Exception e) {
                     Core.logMessage("Pictify Loader Error", "Ignoring renderer with id '" + result.getInt("id") + "'. Cause: " + e.getMessage());
@@ -119,7 +117,8 @@ public class RendererManager {
             }
             result.close();
             sql.close();
-            Core.logMessage("Pictify Loader", "Finished loading all images!");
+            Core.logMessage("Pictify Loader", "Finished loading " + images.size() + " image" +
+                    TextUtil.pluralize(images.size()) + "!");
         } catch (SQLException e) {
             Core.logMessage("Pictify Loader Error", "Error with loader SQL query!");
             e.printStackTrace();

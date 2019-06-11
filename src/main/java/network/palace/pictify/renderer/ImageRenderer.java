@@ -23,13 +23,12 @@ import java.util.UUID;
  * @author Marc
  * @since 7/2/17
  */
-@SuppressWarnings("deprecation")
 public class ImageRenderer extends MapRenderer {
     @Getter private final int id;
     @Getter private final int frameId;
     @Getter private BufferedImage image;
-    @Getter public int xCap = 0;
-    @Getter public int yCap = 0;
+    @Getter public int xCap;
+    @Getter public int yCap;
     @Getter @Setter private String source;
     @Getter private byte[] data;
     @Getter @Setter private boolean restored = false;
@@ -51,10 +50,9 @@ public class ImageRenderer extends MapRenderer {
 
     @Override
     public void render(MapView view, MapCanvas canvas, Player p) {
-        if (rendered.contains(p.getUniqueId())) {
-            // Already sent this player the map, no need to send it again
-            return;
-        }
+        // Already sent this player the map, no need to send it again
+        if (rendered.contains(p.getUniqueId())) return;
+
         for (int x2 = 0; x2 < this.xCap; x2++) {
             for (int y2 = 0; y2 < this.yCap; y2++) {
                 try {
@@ -65,6 +63,7 @@ public class ImageRenderer extends MapRenderer {
                 }
             }
         }
+
         rendered.add(p.getUniqueId());
         p.sendMap(view);
     }
@@ -82,7 +81,9 @@ public class ImageRenderer extends MapRenderer {
         m.addRenderer(this);
     }
 
+    @SuppressWarnings("deprecation")
     private MapView getMapView() {
+        //TODO Make this entire process reflection-based
         MapView m = Bukkit.getMap((short) frameId);
         if (m != null) {
             return m;
@@ -105,7 +106,7 @@ public class ImageRenderer extends MapRenderer {
             int spawnY = (int) worldData.getClass().getMethod("d").invoke(worldData);
             int dimension = (int) worldServer.getClass().getDeclaredField("dimension").get(worldServer);
             // Calculate map center
-            map.getClass().getMethod("a", double.class, double.class, int.class).invoke(map, spawnX, spawnY, scale.get(map));
+            map.getClass().getMethod("a", double.class, double.class, int.class).invoke(map, spawnX, spawnY, scale.getInt(map));
             // Set dimension
             Field mapDimension = map.getClass().getDeclaredField("map");
             mapDimension.setByte(map, (byte) dimension);
