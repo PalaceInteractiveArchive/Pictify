@@ -21,7 +21,6 @@ public class PictifyCommand extends CoreCommand {
         registerSubCommand(new ListCommand());
         registerSubCommand(new ReloadCommand());
         registerSubCommand(new RemoveCommand());
-        registerSubCommand(new RestoreCommand());
     }
 
     @Override
