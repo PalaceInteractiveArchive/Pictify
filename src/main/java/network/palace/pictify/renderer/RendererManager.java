@@ -9,6 +9,7 @@ import org.apache.commons.io.IOUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.event.server.MapInitializeEvent;
 import org.bukkit.map.MapPalette;
 import org.bukkit.map.MapView;
 
@@ -254,6 +255,7 @@ public class RendererManager {
             running = false;
             return false;
         }
+        Core.callEvent(new MapInitializeEvent(newView));
         player.sendMessage(ChatColor.GREEN + "Renderer with ID " + id + " created and added to this server");
         running = false;
         return true;
