@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.map.MapPalette;
+import org.bukkit.map.MapView;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -19,7 +20,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * @author Marc
@@ -27,7 +31,7 @@ import java.util.*;
  */
 public class RendererManager {
     @Getter private static final String prefix = "https://staff.palace.network/pictify/images/";
-    private HashMap<Integer, ImageRenderer> images = new HashMap<>();
+    private final HashMap<Integer, ImageRenderer> images = new HashMap<>();
     private boolean running = false;
 
     public RendererManager() {
@@ -36,10 +40,8 @@ public class RendererManager {
 
     public void load() {
         images.clear();
-        File dir = new File("plugins/Pictify");
-        if (!dir.exists()) dir.mkdir();
         File cacheDir = new File("plugins/Pictify/cache");
-        if (!cacheDir.exists()) cacheDir.mkdir();
+        if (!cacheDir.exists()) cacheDir.mkdirs();
         File idFile = new File("plugins/Pictify/ids.yml");
         if (!idFile.exists()) {
             try {
@@ -60,6 +62,7 @@ public class RendererManager {
             Core.logMessage("Pictify Loader", "Could not establish an SQL connection!");
             return;
         }
+        Core.logMessage("Pictify Loader", "Loading " + ids.size() + " image" + TextUtil.pluralize(ids.size()) + "...");
         try {
             PreparedStatement sql = connection.prepareStatement("SELECT id,source FROM pictify");
             ResultSet result = sql.executeQuery();
@@ -81,7 +84,6 @@ public class RendererManager {
                         break;
                     }
                 }
-
                 if (!contains) continue;
 
                 try {
@@ -93,25 +95,26 @@ public class RendererManager {
                         DataInputStream inputStream = new DataInputStream(new ByteArrayInputStream(data));
                         int xCap = inputStream.readInt();
                         int yCap = inputStream.readInt();
-                        byte[] out = new byte[data.length - 8];
-                        inputStream.readFully(out);
+                        byte[] imageData = new byte[data.length - 8];
+                        inputStream.readFully(imageData);
                         inputStream.close();
-                        renderer = new ImageRenderer(id, frameId, out, xCap, yCap, source);
+                        renderer = new ImageRenderer(id, frameId, imageData, xCap, yCap, source);
                     } else {
+                        Core.logMessage("Pictify Loader", "Saving " + id + " to cache");
                         BufferedImage image = ImageUtil.loadImage(id, new URL(source));
                         image = ImageUtil.scale(image, 128, 128);
                         if (image == null) continue;
                         DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(cacheFile));
                         dataOutputStream.writeInt(image.getWidth(null));
                         dataOutputStream.writeInt(image.getHeight(null));
-                        byte[] data = MapPalette.imageToBytes(image);
-                        dataOutputStream.write(data);
+                        @SuppressWarnings("deprecation") byte[] imageData = MapPalette.imageToBytes(image);
+                        dataOutputStream.write(imageData);
                         dataOutputStream.close();
-                        renderer = new ImageRenderer(id, frameId, data, image.getWidth(null), image.getHeight(null), source);
+                        renderer = new ImageRenderer(id, frameId, imageData, image.getWidth(null), image.getHeight(null), source);
                     }
-//                    Core.logMessage("Pictify Loader", "Loaded renderer with id " + renderer.getId());
                     images.put(renderer.getId(), renderer);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     Core.logMessage("Pictify Loader Error", "Ignoring renderer with id '" + result.getInt("id") + "'. Cause: " + e.getMessage());
                 }
             }
@@ -220,66 +223,31 @@ public class RendererManager {
         }
         player.sendMessage(ChatColor.GREEN + "Found image source, creating renderer now...");
 
-        File idFile = new File("plugins/Pictify/ids.yml");
-        YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
-        List<String> ids = idConfig.getStringList("ids");
-        List<Integer> frameIds = new ArrayList<>();
-        for (String s : ids) {
-            try {
-                int frameId = Integer.parseInt(s.split(":")[1]);
-                frameIds.add(frameId);
-            } catch (Exception e) {
-                Core.logMessage("Pictify Loader Error", "Error parsing config value '" + s +
-                        "' Cause: " + e.getMessage());
-            }
-        }
-        Collections.sort(frameIds);
-        int frameId = 0;
+        MapView newView = Bukkit.createMap(Bukkit.getWorlds().get(0));
+        int frameId = newView.getId();
 
-        boolean checking = true;
-
-        while (checking) {
-            frameId++;
-            if (frameIds.contains(frameId)) continue;
-            if (Bukkit.getMap((short) frameId) != null) continue;
-            checking = false;
-        }
-
-//        for (int i : frameIds) {
-//            if (i == frameId) {
-//                frameId++;
-//            } else {
-//                break;
-//            }
-//        }
-        if (frameIds.contains(frameId)) {
-            player.sendMessage("Didn't find the smallest number " + frameId);
-            running = false;
-            return false;
-        }
-
-        ImageRenderer image;
+        ImageRenderer imageRenderer;
         try {
-            URL url = new URL(getPrefix() + source + ".png");
-            BufferedImage bufferedImage = ImageUtil.loadImage(id, url);
-            if (bufferedImage == null) {
+            URL url = new URL(prefix + source + ".png");
+            BufferedImage image = ImageUtil.loadImage(id, url);
+            if (image == null) {
                 player.sendMessage(ChatColor.RED + "Error creating image object with URL " + ChatColor.GREEN +
                         url.toString());
                 running = false;
                 return false;
             }
-            bufferedImage = ImageUtil.scale(bufferedImage, 128, 128);
-            byte[] data = MapPalette.imageToBytes(bufferedImage);
-            image = new ImageRenderer(id, frameId, data, bufferedImage.getWidth(null), bufferedImage.getHeight(null));
+            image = ImageUtil.scale(image, 128, 128);
+            @SuppressWarnings("deprecation") byte[] imageData = MapPalette.imageToBytes(image);
+            imageRenderer = new ImageRenderer(id, frameId, imageData, image.getWidth(null), image.getHeight(null));
         } catch (MalformedURLException e) {
             player.sendMessage(ChatColor.RED + "Error requesting image with source '" + source + "'!");
             e.printStackTrace();
             running = false;
             return false;
         }
-        image.setSource(getPrefix() + source + ".png");
+        imageRenderer.setSource(prefix + source + ".png");
         try {
-            addImage(image);
+            addImage(imageRenderer);
         } catch (IOException e) {
             player.sendMessage(ChatColor.RED + "Error saving ID to server file ids.yml");
             e.printStackTrace();

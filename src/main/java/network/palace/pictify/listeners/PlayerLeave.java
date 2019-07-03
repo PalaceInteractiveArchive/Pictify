@@ -25,6 +25,6 @@ public class PlayerLeave implements Listener {
     }
 
     private void onPlayerLeave(CPlayer player) {
-        if (player != null) Pictify.getInstance().getRendererManager().leave(player.getUniqueId());
+        if (player != null) Pictify.getRendererManager().leave(player.getUniqueId());
     }
 }

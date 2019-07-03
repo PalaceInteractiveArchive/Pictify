@@ -1,10 +1,10 @@
 package network.palace.pictify.commands.pictify;
 
 import network.palace.core.command.CommandException;
+import network.palace.core.command.CommandMeta;
 import network.palace.core.command.CoreCommand;
 import network.palace.pictify.Pictify;
 import network.palace.pictify.renderer.ImageRenderer;
-import network.palace.pictify.renderer.RendererManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
@@ -14,6 +14,7 @@ import java.io.IOException;
  * @author Marc
  * @since 7/7/17
  */
+@CommandMeta(description = "Remove an image from this server")
 public class RemoveCommand extends CoreCommand {
 
     public RemoveCommand() {
@@ -33,14 +34,13 @@ public class RemoveCommand extends CoreCommand {
             sender.sendMessage(ChatColor.RED + args[1] + " isn't a number!");
             return;
         }
-        RendererManager manager = Pictify.getInstance().getRendererManager();
         ImageRenderer image;
         boolean frame = false;
         if (args[0].toLowerCase().equals("local")) {
-            image = manager.getLocalImage(id);
+            image = Pictify.getRendererManager().getLocalImage(id);
             frame = true;
         } else {
-            image = manager.getImage(id);
+            image = Pictify.getRendererManager().getImage(id);
         }
         if (image == null) {
             sender.sendMessage(ChatColor.RED + "There is no local image with ID " + id + "!");
@@ -48,7 +48,7 @@ public class RemoveCommand extends CoreCommand {
         }
         image.deactivate();
         try {
-            manager.removeImage(id, frame);
+            Pictify.getRendererManager().removeImage(id, frame);
         } catch (IOException e) {
             sender.sendMessage(ChatColor.RED + "Error removing ID from server file ids.yml");
             e.printStackTrace();

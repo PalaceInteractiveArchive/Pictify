@@ -1,10 +1,10 @@
 package network.palace.pictify.commands.pictify;
 
 import network.palace.core.command.CommandException;
+import network.palace.core.command.CommandMeta;
 import network.palace.core.command.CoreCommand;
 import network.palace.pictify.Pictify;
 import network.palace.pictify.renderer.ImageRenderer;
-import network.palace.pictify.renderer.RendererManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
@@ -12,6 +12,7 @@ import org.bukkit.command.CommandSender;
  * @author Marc
  * @since 9/8/17
  */
+@CommandMeta(description = "Get info about a local or remote image")
 public class InfoCommand extends CoreCommand {
 
     public InfoCommand() {
@@ -31,12 +32,11 @@ public class InfoCommand extends CoreCommand {
             sender.sendMessage(ChatColor.RED + args[1] + " isn't a number!");
             return;
         }
-        RendererManager manager = Pictify.getInstance().getRendererManager();
         ImageRenderer image;
         if (args[0].toLowerCase().equals("local")) {
-            image = manager.getLocalImage(id);
+            image = Pictify.getRendererManager().getLocalImage(id);
         } else {
-            image = manager.getImage(id);
+            image = Pictify.getRendererManager().getImage(id);
         }
         if (image == null) {
             sender.sendMessage(ChatColor.RED + "There is no local image with ID " + id + "!");
