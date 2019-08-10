@@ -50,10 +50,7 @@ public class GiveCommand extends CoreCommand {
                     player.sendMessage(ChatColor.RED + "Error creating map item!");
                     return;
                 }
-                ItemStack map = ItemUtil.create(Material.FILLED_MAP);
-                MapMeta meta = (MapMeta) map.getItemMeta();
-                meta.setMapView(image.getMapView());
-                map.setItemMeta(meta);
+                ItemStack map = ItemUtil.create(Material.MAP, 1, (short) image.getFrameId());
                 if (map == null) {
                     player.sendMessage(ChatColor.RED + "Error creating map item!");
                     return;
