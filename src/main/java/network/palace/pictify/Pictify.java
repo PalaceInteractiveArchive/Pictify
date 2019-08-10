@@ -4,7 +4,6 @@ import lombok.Getter;
 import network.palace.core.plugin.Plugin;
 import network.palace.core.plugin.PluginInfo;
 import network.palace.pictify.commands.PictifyCommand;
-import network.palace.pictify.listeners.MapListener;
 import network.palace.pictify.listeners.PlayerLeave;
 import network.palace.pictify.renderer.ImageRenderer;
 import network.palace.pictify.renderer.RendererManager;
@@ -22,7 +21,8 @@ public class Pictify extends Plugin {
     protected void onPluginEnable() throws Exception {
         instance = this;
         rendererManager = new RendererManager();
-        registerListener(new MapListener());
+        // Un-comment for 1.13
+        // registerListener(new MapListener());
         registerListener(new PlayerLeave());
         registerCommand(new PictifyCommand());
     }

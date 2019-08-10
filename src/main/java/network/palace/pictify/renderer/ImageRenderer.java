@@ -48,6 +48,11 @@ public class ImageRenderer extends MapRenderer {
         this.yCap = yCap;
         this.data = data;
         this.source = source;
+        this.mapView = Bukkit.getMap((short) frameId);
+        for (MapRenderer renderer : mapView.getRenderers()) {
+            mapView.removeRenderer(renderer);
+        }
+        mapView.addRenderer(this);
     }
 
     @Override

@@ -47,12 +47,12 @@ public class GiveCommand extends CoreCommand {
             Core.runTask(Pictify.getInstance(), () -> {
                 ImageRenderer image = Pictify.getRendererManager().getImage(id);
                 if (image == null || image.getMapView() == null) {
-                    player.sendMessage(ChatColor.RED + "Error creating map item!");
+                    player.sendMessage(ChatColor.RED + "Error creating map item! (1)");
                     return;
                 }
                 ItemStack map = ItemUtil.create(Material.MAP, 1, (short) image.getFrameId());
                 if (map == null) {
-                    player.sendMessage(ChatColor.RED + "Error creating map item!");
+                    player.sendMessage(ChatColor.RED + "Error creating map item! (2)");
                     return;
                 }
                 player.getInventory().addItem(map);
