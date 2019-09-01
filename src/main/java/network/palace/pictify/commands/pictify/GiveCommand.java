@@ -2,18 +2,22 @@ package network.palace.pictify.commands.pictify;
 
 import network.palace.core.Core;
 import network.palace.core.command.CommandException;
+import network.palace.core.command.CommandMeta;
 import network.palace.core.command.CoreCommand;
 import network.palace.core.player.CPlayer;
+import network.palace.core.utils.ItemUtil;
 import network.palace.pictify.Pictify;
-import network.palace.pictify.renderer.RendererManager;
+import network.palace.pictify.renderer.ImageRenderer;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.MapMeta;
 
 /**
  * @author Marc
  * @since 7/7/17
  */
+@CommandMeta(description = "Give yourself an image map")
 public class GiveCommand extends CoreCommand {
 
     public GiveCommand() {
@@ -26,7 +30,6 @@ public class GiveCommand extends CoreCommand {
             player.sendMessage(ChatColor.RED + "/pictify give [ID]");
             return;
         }
-        RendererManager manager = Pictify.getInstance().getRendererManager();
         int id;
         try {
             id = Integer.parseInt(args[0]);
@@ -34,22 +37,26 @@ public class GiveCommand extends CoreCommand {
             player.sendMessage(ChatColor.RED + args[0] + " isn't a number!");
             return;
         }
-        Core.runTaskAsynchronously(() -> {
-            if (!manager.getIds().contains(id)) {
+        Core.runTaskAsynchronously(Pictify.getInstance(), () -> {
+            if (!Pictify.getRendererManager().getIds().contains(id)) {
                 player.sendMessage(ChatColor.YELLOW + "ID " + id + " isn't added to this server, checking database...");
-                if (!manager.importFromDatabase(id, player)) {
+                if (!Pictify.getRendererManager().importFromDatabase(id, player)) {
                     return;
                 }
             }
-            Core.runTask(() -> {
-                int frameId = manager.getImage(id).getFrameId();
-                ItemStack map = new ItemStack(Material.MAP, 1, (short) frameId);
+            Core.runTask(Pictify.getInstance(), () -> {
+                ImageRenderer image = Pictify.getRendererManager().getImage(id);
+                if (image == null || image.getMapView() == null) {
+                    player.sendMessage(ChatColor.RED + "Error creating map item! (1)");
+                    return;
+                }
+                ItemStack map = ItemUtil.create(Material.MAP, 1, (short) image.getFrameId());
                 if (map == null) {
-                    player.sendMessage(ChatColor.RED + "Error creating map item!");
+                    player.sendMessage(ChatColor.RED + "Error creating map item! (2)");
                     return;
                 }
                 player.getInventory().addItem(map);
-                player.sendMessage(ChatColor.GREEN + "Gave you map for image ID " + id + " (map ID " + frameId + ")");
+                player.sendMessage(ChatColor.GREEN + "Gave you map for image ID " + id + " (map ID " + image.getMapView().getId() + ")");
             });
         });
     }

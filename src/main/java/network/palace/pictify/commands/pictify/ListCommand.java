@@ -17,7 +17,7 @@ import java.util.List;
  * @author Marc
  * @since 7/7/17
  */
-@CommandMeta(description = "List all pictify images")
+@CommandMeta(description = "List all local images")
 public class ListCommand extends CoreCommand {
 
     public ListCommand() {
@@ -26,7 +26,7 @@ public class ListCommand extends CoreCommand {
 
     @Override
     protected void handleCommandUnspecific(CommandSender sender, String[] args) throws CommandException {
-        List<ImageRenderer> images = Pictify.getInstance().getRendererManager().getImages();
+        List<ImageRenderer> images = Pictify.getRendererManager().getImages();
         sender.sendMessage(ChatColor.GREEN + "There are " + images.size() + " images on this server");
         for (ImageRenderer image : images) {
             if (sender instanceof Player) {

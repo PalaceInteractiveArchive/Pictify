@@ -12,7 +12,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
  * @author Marc
  * @since 7/7/17
  */
-public class PlayerJoinAndLeave implements Listener {
+public class PlayerLeave implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
@@ -25,8 +25,6 @@ public class PlayerJoinAndLeave implements Listener {
     }
 
     private void onPlayerLeave(CPlayer player) {
-        if (player == null)
-            return;
-        Pictify.getInstance().getRendererManager().leave(player.getUniqueId());
+        if (player != null) Pictify.getRendererManager().leave(player.getUniqueId());
     }
 }
