@@ -29,7 +29,7 @@ public class Pictify extends Plugin {
 
     @Override
     protected void onPluginDisable() throws Exception {
-        for (ImageRenderer image : rendererManager.getImages()) {
+        for (ImageRenderer image : rendererManager.getAllImages()) {
             image.deactivate();
         }
     }

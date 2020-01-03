@@ -8,6 +8,7 @@ import network.palace.pictify.utils.ImageUtil;
 import org.apache.commons.io.IOUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.server.MapInitializeEvent;
 import org.bukkit.map.MapPalette;
@@ -32,30 +33,45 @@ import java.util.UUID;
  */
 public class RendererManager {
     @Getter private static final String prefix = "https://staff.palace.network/pictify/images/";
-    private final HashMap<Integer, ImageRenderer> images = new HashMap<>();
+    private final HashMap<World, HashMap<Integer, ImageRenderer>> worlds = new HashMap<>();
     private boolean running = false;
 
     public RendererManager() {
-        load();
+        initialize();
     }
 
-    public void load() {
-        images.clear();
+    public void initialize() {
+        worlds.clear();
+        File worldDir = new File("plugins/Pictify/worlds");
+        if (!worldDir.exists() || !worldDir.isDirectory()) worldDir.mkdir();
+
+        File originalFile = new File("plugins/Pictify/ids.yml");
+        if (originalFile.exists()) {
+            originalFile.renameTo(new File("plugins/Pictify/worlds/" + Bukkit.getWorlds().get(0).getName() + "_ids.yml"));
+        }
+
+        for (World world : Bukkit.getWorlds()) {
+            loadWorld(world);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    public void loadWorld(World world) {
         File cacheDir = new File("plugins/Pictify/cache");
         if (!cacheDir.exists()) cacheDir.mkdirs();
-        File idFile = new File("plugins/Pictify/ids.yml");
+        File idFile = new File("plugins/Pictify/worlds/" + world.getName() + "_ids.yml");
         if (!idFile.exists()) {
             try {
                 idFile.createNewFile();
             } catch (IOException e) {
                 Core.logMessage("Pictify Loader", "Error creating file at " + idFile.getPath());
+                return;
             }
-            return;
         }
         YamlConfiguration idConfig = YamlConfiguration.loadConfiguration(idFile);
         List<String> ids = idConfig.getStringList("ids");
         if (ids.isEmpty()) {
-            Core.logMessage("Pictify Loader", "No images to load, finished!");
+            Core.logMessage("Pictify Loader", "No images to load for world '" + world.getName() + "'!");
             return;
         }
         Connection connection = Core.getSqlUtil().getConnection();
@@ -63,89 +79,106 @@ public class RendererManager {
             Core.logMessage("Pictify Loader", "Could not establish an SQL connection!");
             return;
         }
-        Core.logMessage("Pictify Loader", "Loading " + ids.size() + " image" + TextUtil.pluralize(ids.size()) + "...");
+        HashMap<Integer, ImageRenderer> worldMaps = new HashMap<>();
+        Core.logMessage("Pictify Loader", "Loading " + ids.size() + " image" + TextUtil.pluralize(ids.size()) + " for '" + world.getName() + "'...");
         try {
-            PreparedStatement sql = connection.prepareStatement("SELECT id,source FROM pictify");
+            StringBuilder idList = new StringBuilder();
+            for (int i = 0; i < ids.size(); i++) {
+                idList.append(ids.get(i));
+                if (i < (ids.size() - 1)) {
+                    idList.append(",");
+                }
+            }
+            PreparedStatement sql = connection.prepareStatement("SELECT id,source FROM pictify WHERE id IN (" + idList.toString() + ")");
             ResultSet result = sql.executeQuery();
             while (result.next()) {
                 int id = result.getInt("id");
                 int frameId = 0;
+                String source = prefix + result.getString("source") + ".png";
                 boolean contains = false;
                 for (String s : ids) {
                     try {
-                        int dbId = Integer.parseInt(s.split(":")[0]);
-                        if (dbId == id) {
+                        String[] split = s.split(":");
+                        if (split[0].equals(String.valueOf(id))) {
                             contains = true;
-                            frameId = Integer.parseInt(s.split(":")[1]);
+                            frameId = Integer.parseInt(split[1]);
                             break;
                         }
                     } catch (Exception e) {
-                        Core.logMessage("Pictify Loader Error", "Error parsing config value '" + s +
-                                "' Cause: " + e.getMessage());
+                        Core.logMessage("Pictify Loader Error", "Error parsing config value '" + s + "': " + e.getMessage());
                         break;
                     }
                 }
                 if (!contains) continue;
 
                 try {
-                    String source = prefix + result.getString("source") + ".png";
                     ImageRenderer renderer;
                     File cacheFile = new File("plugins/Pictify/cache/" + id + ".cache");
+                    byte[] imageData;
+                    int xCap, yCap;
                     if (cacheFile.exists()) {
-                        byte[] data = IOUtils.toByteArray(new FileInputStream(cacheFile));
+                        byte[] data;
+                        data = IOUtils.toByteArray(new FileInputStream(cacheFile));
                         DataInputStream inputStream = new DataInputStream(new ByteArrayInputStream(data));
-                        int xCap = inputStream.readInt();
-                        int yCap = inputStream.readInt();
-                        byte[] imageData = new byte[data.length - 8];
+                        xCap = inputStream.readInt();
+                        yCap = inputStream.readInt();
+                        imageData = new byte[data.length - 8];
                         inputStream.readFully(imageData);
                         inputStream.close();
-                        renderer = new ImageRenderer(id, frameId, imageData, xCap, yCap, source);
                     } else {
-                        Core.logMessage("Pictify Loader", "Saving " + id + " to cache");
+                        Core.logMessage("Pictify Loader", "Saving " + id + " to cache...");
                         BufferedImage image = ImageUtil.loadImage(id, new URL(source));
                         image = ImageUtil.scale(image, 128, 128);
                         if (image == null) continue;
+                        imageData = MapPalette.imageToBytes(image);
                         DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(cacheFile));
-                        dataOutputStream.writeInt(image.getWidth(null));
-                        dataOutputStream.writeInt(image.getHeight(null));
-                        @SuppressWarnings("deprecation") byte[] imageData = MapPalette.imageToBytes(image);
+                        dataOutputStream.writeInt(xCap = image.getWidth(null));
+                        dataOutputStream.writeInt(yCap = image.getHeight(null));
                         dataOutputStream.write(imageData);
                         dataOutputStream.close();
-                        renderer = new ImageRenderer(id, frameId, imageData, image.getWidth(null), image.getHeight(null), source);
                     }
-                    images.put(renderer.getId(), renderer);
+                    renderer = new ImageRenderer(world, id, frameId, imageData, xCap, yCap, source);
+                    worldMaps.put(renderer.getId(), renderer);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Core.logMessage("Pictify Loader Error", "Ignoring renderer with id '" + result.getInt("id") + "'. Cause: " + e.getMessage());
+                    Core.logMessage("Pictify Loader Error", "Error loading image id '" + id + "': " + e.getMessage());
                 }
             }
             result.close();
             sql.close();
-            Core.logMessage("Pictify Loader", "Finished loading " + images.size() + " image" +
-                    TextUtil.pluralize(images.size()) + "!");
+            Core.logMessage("Pictify Loader", "Finished loading " + worldMaps.size() + " image" +
+                    TextUtil.pluralize(worldMaps.size()) + " for '" + world.getName() + "'!");
         } catch (SQLException e) {
             Core.logMessage("Pictify Loader Error", "Error with loader SQL query!");
             e.printStackTrace();
         }
+        worlds.put(world, worldMaps);
     }
 
     public void leave(UUID uuid) {
-        if (uuid == null)
-            return;
-        for (ImageRenderer renderer : images.values())
-            renderer.leave(uuid);
+        if (uuid == null) return;
+        worlds.values().forEach(worldMaps -> worldMaps.values().forEach(renderer -> renderer.leave(uuid)));
     }
 
-    public List<ImageRenderer> getImages() {
-        return new ArrayList<>(images.values());
+    public List<ImageRenderer> getAllImages() {
+        List<ImageRenderer> list = new ArrayList<>();
+        worlds.values().forEach(worldMaps -> list.addAll(worldMaps.values()));
+        return list;
     }
 
-    public List<Integer> getIds() {
-        return new ArrayList<>(images.keySet());
+    public List<ImageRenderer> getImages(World world) {
+        if (!worlds.containsKey(world)) return new ArrayList<>();
+        return new ArrayList<>(worlds.get(world).values());
     }
 
-    public ImageRenderer getImage(int id) {
-        return images.get(id);
+    public List<Integer> getIds(World world) {
+        if (!worlds.containsKey(world)) return new ArrayList<>();
+        return new ArrayList<>(worlds.get(world).keySet());
+    }
+
+    public ImageRenderer getImage(World world, int id) {
+        if (!worlds.containsKey(world)) return null;
+        return worlds.get(world).get(id);
     }
 
     public ImageRenderer getLocalImage(int id) {
@@ -224,7 +257,7 @@ public class RendererManager {
         }
         player.sendMessage(ChatColor.GREEN + "Found image source, creating renderer now...");
 
-        MapView newView = Bukkit.createMap(Bukkit.getWorlds().get(0));
+        MapView newView = Bukkit.createMap(player.getWorld());
         int frameId = newView.getId();
 
         ImageRenderer imageRenderer;
@@ -239,7 +272,7 @@ public class RendererManager {
             }
             image = ImageUtil.scale(image, 128, 128);
             @SuppressWarnings("deprecation") byte[] imageData = MapPalette.imageToBytes(image);
-            imageRenderer = new ImageRenderer(id, frameId, imageData, image.getWidth(null), image.getHeight(null));
+            imageRenderer = new ImageRenderer(player.getWorld(), id, frameId, imageData, image.getWidth(null), image.getHeight(null));
         } catch (MalformedURLException e) {
             player.sendMessage(ChatColor.RED + "Error requesting image with source '" + source + "'!");
             e.printStackTrace();

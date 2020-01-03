@@ -32,12 +32,8 @@ public class ImageRenderer extends MapRenderer {
     private final List<UUID> rendered = new ArrayList<>();
     @Getter @Setter private MapView mapView;
 
-    public ImageRenderer(int id, int frameId, byte[] data, int xCap, int yCap) {
-        this(Bukkit.getWorlds().get(0), id, frameId, data, xCap, yCap, "unknown");
-    }
-
-    public ImageRenderer(int id, int frameId, byte[] data, int xCap, int yCap, String source) {
-        this(Bukkit.getWorlds().get(0), id, frameId, data, xCap, yCap, source);
+    public ImageRenderer(World world, int id, int frameId, byte[] data, int xCap, int yCap) {
+        this(world, id, frameId, data, xCap, yCap, "unknown");
     }
 
     public ImageRenderer(World world, int id, int frameId, byte[] data, int xCap, int yCap, String source) {

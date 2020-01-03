@@ -21,7 +21,7 @@ public class ReloadCommand extends CoreCommand {
     @Override
     protected void handleCommandUnspecific(CommandSender sender, String[] args) throws CommandException {
         sender.sendMessage(ChatColor.GREEN + "Reloading Pictify image map...");
-        Pictify.getRendererManager().load();
+        Pictify.getRendererManager().loadWorld();
         sender.sendMessage(ChatColor.GREEN + "Pictify image map reloaded!");
     }
 }

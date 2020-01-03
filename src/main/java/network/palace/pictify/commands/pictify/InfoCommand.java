@@ -3,10 +3,10 @@ package network.palace.pictify.commands.pictify;
 import network.palace.core.command.CommandException;
 import network.palace.core.command.CommandMeta;
 import network.palace.core.command.CoreCommand;
+import network.palace.core.player.CPlayer;
 import network.palace.pictify.Pictify;
 import network.palace.pictify.renderer.ImageRenderer;
 import org.bukkit.ChatColor;
-import org.bukkit.command.CommandSender;
 
 /**
  * @author Marc
@@ -20,30 +20,30 @@ public class InfoCommand extends CoreCommand {
     }
 
     @Override
-    protected void handleCommandUnspecific(CommandSender sender, String[] args) throws CommandException {
+    protected void handleCommand(CPlayer player, String[] args) throws CommandException {
         if (args.length != 2) {
-            sender.sendMessage(ChatColor.RED + "/pictify info [Local/Remote] [ID]");
+            player.sendMessage(ChatColor.RED + "/pictify info [Local/Remote] [ID]");
             return;
         }
         int id;
         try {
             id = Integer.parseInt(args[1]);
         } catch (NumberFormatException ignored) {
-            sender.sendMessage(ChatColor.RED + args[1] + " isn't a number!");
+            player.sendMessage(ChatColor.RED + args[1] + " isn't a number!");
             return;
         }
         ImageRenderer image;
         if (args[0].toLowerCase().equals("local")) {
             image = Pictify.getRendererManager().getLocalImage(id);
         } else {
-            image = Pictify.getRendererManager().getImage(id);
+            image = Pictify.getRendererManager().getImage(player.getWorld(), id);
         }
         if (image == null) {
-            sender.sendMessage(ChatColor.RED + "There is no local image with ID " + id + "!");
+            player.sendMessage(ChatColor.RED + "There is no local image on this world with ID " + id + "!");
             return;
         }
-        sender.sendMessage(ChatColor.GREEN + "Image ID: " + image.getId());
-        sender.sendMessage(ChatColor.GREEN + "Frame ID: " + image.getFrameId());
-        sender.sendMessage(ChatColor.GREEN + "Source: " + image.getSource());
+        player.sendMessage(ChatColor.GREEN + "Image ID: " + image.getId());
+        player.sendMessage(ChatColor.GREEN + "Frame ID: " + image.getFrameId());
+        player.sendMessage(ChatColor.GREEN + "Source: " + image.getSource());
     }
 }
