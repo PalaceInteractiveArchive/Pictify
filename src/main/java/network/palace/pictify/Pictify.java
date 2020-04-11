@@ -12,7 +12,7 @@ import network.palace.pictify.renderer.RendererManager;
  * @author Marc
  * @since 6/27/17
  */
-@PluginInfo(name = "Pictify", version = "1.0.9", depend = {"Core", "ProtocolLib"}, canReload = true)
+@PluginInfo(name = "Pictify", version = "1.0.9", depend = {"Core", "ProtocolLib"}, softdepend = "MultiWorld", canReload = true)
 public class Pictify extends Plugin {
     @Getter private static Pictify instance;
     @Getter private static RendererManager rendererManager;
@@ -29,7 +29,7 @@ public class Pictify extends Plugin {
 
     @Override
     protected void onPluginDisable() throws Exception {
-        for (ImageRenderer image : rendererManager.getAllImages()) {
+        for (ImageRenderer image : rendererManager.getImages()) {
             image.deactivate();
         }
     }

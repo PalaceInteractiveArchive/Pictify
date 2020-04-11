@@ -36,7 +36,7 @@ public class InfoCommand extends CoreCommand {
         if (args[0].toLowerCase().equals("local")) {
             image = Pictify.getRendererManager().getLocalImage(id);
         } else {
-            image = Pictify.getRendererManager().getImage(player.getWorld(), id);
+            image = Pictify.getRendererManager().getImage(id);
         }
         if (image == null) {
             player.sendMessage(ChatColor.RED + "There is no local image on this world with ID " + id + "!");

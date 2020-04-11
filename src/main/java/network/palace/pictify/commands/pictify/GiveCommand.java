@@ -37,14 +37,14 @@ public class GiveCommand extends CoreCommand {
             return;
         }
         Core.runTaskAsynchronously(Pictify.getInstance(), () -> {
-            if (!Pictify.getRendererManager().getIds(player.getWorld()).contains(id)) {
+            if (!Pictify.getRendererManager().getIds().contains(id)) {
                 player.sendMessage(ChatColor.YELLOW + "ID " + id + " isn't added to this world, checking database...");
                 if (!Pictify.getRendererManager().importFromDatabase(id, player)) {
                     return;
                 }
             }
             Core.runTask(Pictify.getInstance(), () -> {
-                ImageRenderer image = Pictify.getRendererManager().getImage(player.getWorld(), id);
+                ImageRenderer image = Pictify.getRendererManager().getImage(id);
                 if (image == null || image.getMapView() == null) {
                     player.sendMessage(ChatColor.RED + "Error creating map item! (1)");
                     return;

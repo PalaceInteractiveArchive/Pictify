@@ -29,7 +29,7 @@ public class ListCommand extends CoreCommand {
     @Override
     protected void handleCommandUnspecific(CommandSender sender, String[] args) throws CommandException {
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "/pictify list [world]");
+            sender.sendMessage(ChatColor.RED + "/pictify list");
             return;
         }
         World world = Bukkit.getWorld(args[0]);
@@ -37,7 +37,7 @@ public class ListCommand extends CoreCommand {
             sender.sendMessage(ChatColor.RED + "Couldn't find a world by the name " + args[0] + "!");
             return;
         }
-        List<ImageRenderer> images = Pictify.getRendererManager().getImages(world);
+        List<ImageRenderer> images = Pictify.getRendererManager().getImages();
         sender.sendMessage(ChatColor.GREEN + "There are " + images.size() + " images on this server");
         for (ImageRenderer image : images) {
             if (sender instanceof Player) {

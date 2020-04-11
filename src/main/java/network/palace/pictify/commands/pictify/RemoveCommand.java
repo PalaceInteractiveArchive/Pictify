@@ -48,7 +48,7 @@ public class RemoveCommand extends CoreCommand {
         }
         image.deactivate();
         try {
-            Pictify.getRendererManager().removeImage(id, frame);
+            Pictify.getRendererManager().removeImage(id, frame, player.getWorld());
         } catch (IOException e) {
             player.sendMessage(ChatColor.RED + "Error removing ID from server file ids.yml");
             e.printStackTrace();
