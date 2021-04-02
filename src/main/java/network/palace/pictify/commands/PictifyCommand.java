@@ -9,7 +9,7 @@ import network.palace.pictify.commands.pictify.*;
  * @author Marc
  * @since 7/7/17
  */
-@CommandMeta(aliases = "pic", description = "Default pictify command", rank = Rank.MOD)
+@CommandMeta(aliases = "pic", description = "Default pictify command", rank = Rank.CM)
 public class PictifyCommand extends CoreCommand {
 
     public PictifyCommand() {
